@@ -1,9 +1,9 @@
 let board = {
     players: [
-        { money: 1500, space: 0, turnsInJail: 0, numDoubles: 0 },
-        { money: 1500, space: 0, turnsInJail: 0, numDoubles: 0 },
-        { money: 1500, space: 0, turnsInJail: 0, numDoubles: 0 },
-        { money: 1500, space: 0, turnsInJail: 0, numDoubles: 0 },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'ben' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'josh' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'isabel' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'mom' },
     ],
     currentPlayer: 0,
     spaces: [
@@ -35,13 +35,15 @@ let board = {
         "24",
         "14",
         "15",
-        "16",
         "27",
+        "16",
+        "Go To Jail",
         "17",
         "18",
         "Community Chest",
         "19",
         "25",
+        "Chance",
         "20",
         "Luxury Tax",
         "21",
@@ -78,9 +80,60 @@ let board = {
     ],
 }
 
-
 function getDiceRoll() {
     const dice1 =  1 + Math.floor(Math.random() * 6);
     const dice2 =  1 + Math.floor(Math.random() * 6);
-    return { double: dice1 === dice2, amount: dice1 + dice2 };
+    return { double: dice1 === dice2 ? 1 : 0, amount: dice1 + dice2 };
 }
+
+function interact(board) {
+    if (!isNaN(parseInt(getSpace(board)))) {
+        // TODO implement transfer money to owner of property if property is owned
+        // TODO implement buying properties if have enough money
+        console.log(getPlayer(board).name, "just bought", getProperty(board).name);
+        // TDOD implement buying houses on monopolies
+    } else {
+        // TODO implement all the special squares you can land on
+        console.log(getPlayer(board).name, "landed on", getSpace(board));
+    }
+}
+
+function getPlayer(board) {
+    return board.players[board.currentPlayer];
+}
+
+function getSpace(board) {
+    return board.spaces[getPlayer(board).space];
+}
+
+function getProperty(board) {
+    return board.properties[parseInt(getSpace(board))];
+}
+
+function calculateNextPlayer(double, board) {
+    if (!double) {
+        getPlayer(board).doubles = 0;
+        board.currentPlayer += 1;
+        if (board.currentPlayer === board.players.length) {
+            board.currentPlayer = 0;
+        }
+    }
+    // TODO implement speeding 3 times goes to jail
+}
+
+function playTurn(board) {
+    const roll = getDiceRoll();
+    getPlayer(board).space += roll.amount;
+    getPlayer(board).doubles += roll.double;
+    interact(board);
+    calculateNextPlayer(roll.double === 1, board);
+}
+
+// TODO make a loop so the game plays until someone runs out of money
+playTurn(board);
+playTurn(board);
+playTurn(board);
+playTurn(board);
+playTurn(board);
+playTurn(board);
+playTurn(board);
