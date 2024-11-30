@@ -1,9 +1,9 @@
 let board = {
     players: [
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'ben' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'josh' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'isabel' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'mom' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'B' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'J' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'I' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'M' },
     ],
     currentPlayer: 0,
     spaces: [
@@ -87,19 +87,32 @@ function getDiceRoll() {
 }
 
 function interact(board) {
-    if (!isNaN(parseInt(getSpace(board)))) {
-        // TODO implement transfer money to owner of property if property is owned
-        // TODO implement buying properties if have enough money
-        console.log(getPlayer(board).name, "just bought", getProperty(board).name);
-        // TDOD implement buying houses on monopolies
+    const player = getPlayer(board);
+    if (isProperty(getSpace(board))) {
+        const property = getProperty(board);
+        if (isOwned(property)) {
+            // TODO transer rent from player to owner
+        } else {
+            // TODO buy if have enough money and transer money to bank
+        }
+        // TODO implement buying houses on monopolies
+        console.log(player.name, "landed on", property);
     } else {
         // TODO implement all the special squares you can land on
-        console.log(getPlayer(board).name, "landed on", getSpace(board));
+        console.log(player.name, "landed on", getSpace(board));
     }
+}
+
+function isOwned(property) {
+    return property.owner !== -1;
 }
 
 function getPlayer(board) {
     return board.players[board.currentPlayer];
+}
+
+function isProperty(space) {
+    return !isNaN(parseInt(space));
 }
 
 function getSpace(board) {
@@ -123,17 +136,73 @@ function calculateNextPlayer(double, board) {
 
 function playTurn(board) {
     const roll = getDiceRoll();
+    console.log(getPlayer(board).name, "rolled", roll.amount);
+    if (roll.double) {
+        console.log(getPlayer(board).name, "got doubles!");
+    }
     getPlayer(board).space += roll.amount;
     getPlayer(board).doubles += roll.double;
     interact(board);
     calculateNextPlayer(roll.double === 1, board);
 }
 
+function getDisplayMoney(board, playerNumber) {
+    return board.players[playerNumber].money.toString().padStart(7, ' ');
+}
+
+function getDisplayPlayersOnSpace(board, space) {
+    let output = '';
+    for (let i = 0; i < 4; i++) {
+        if (board.players[i].space === space) {
+            output += board.players[i].name;
+        }
+    }
+    return output.padStart(3, ' ');
+}
+
+function renderBoard(board) {
+    console.log(`;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;`);
+    console.log(`;     |   |   |   |   |   |   |   |   |   |     ;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 10)} |${getDisplayPlayersOnSpace(board, 11)}|${getDisplayPlayersOnSpace(board, 12)}|${getDisplayPlayersOnSpace(board, 13)}|${getDisplayPlayersOnSpace(board, 14)}|${getDisplayPlayersOnSpace(board, 15)}|${getDisplayPlayersOnSpace(board, 16)}|${getDisplayPlayersOnSpace(board, 17)}|${getDisplayPlayersOnSpace(board, 18)}|${getDisplayPlayersOnSpace(board, 19)}| ${getDisplayPlayersOnSpace(board, 20)} ;`);
+    console.log(`;_____|___|___|___|___|___|___|___|___|___|_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 9)} |                                   | ${getDisplayPlayersOnSpace(board, 21)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 8)} |                                   | ${getDisplayPlayersOnSpace(board, 22)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 7)} |                                   | ${getDisplayPlayersOnSpace(board, 23)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 6)} |              monopoly             | ${getDisplayPlayersOnSpace(board, 24)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 5)} |            B: $${getDisplayMoney(board, 0)}            | ${getDisplayPlayersOnSpace(board, 25)} ;`);
+    console.log(`;_____|            J: $${getDisplayMoney(board, 1)}            |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 4)} |            I: $${getDisplayMoney(board, 2)}            | ${getDisplayPlayersOnSpace(board, 26)} ;`);
+    console.log(`;_____|            M: $${getDisplayMoney(board, 3)}            |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 3)} |                                   | ${getDisplayPlayersOnSpace(board, 27)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 2)} |                                   | ${getDisplayPlayersOnSpace(board, 28)} ;`);
+    console.log(`;_____|                                   |_____;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 1)} |                                   | ${getDisplayPlayersOnSpace(board, 29)} ;`);
+    console.log(`;_____|___________________________________|_____;`);
+    console.log(`;     |   |   |   |   |   |   |   |   |   |     ;`);
+    console.log(`; ${getDisplayPlayersOnSpace(board, 0)} |${getDisplayPlayersOnSpace(board, 39)}|${getDisplayPlayersOnSpace(board, 38)}|${getDisplayPlayersOnSpace(board, 37)}|${getDisplayPlayersOnSpace(board, 36)}|${getDisplayPlayersOnSpace(board, 35)}|${getDisplayPlayersOnSpace(board, 34)}|${getDisplayPlayersOnSpace(board, 33)}|${getDisplayPlayersOnSpace(board, 32)}|${getDisplayPlayersOnSpace(board, 31)}| ${getDisplayPlayersOnSpace(board, 30)} ;`);
+    console.log(`;_____|___|___|___|___|___|___|___|___|___|_____;`);
+    console.log(`;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;`);
+}
+
+renderBoard(board);
+
 // TODO make a loop so the game plays until someone runs out of money
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
 playTurn(board);
+renderBoard(board);
