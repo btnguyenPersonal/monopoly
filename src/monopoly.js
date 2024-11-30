@@ -1,9 +1,9 @@
 let board = {
     players: [
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'B' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'J' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'I' },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'M' },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'B', number: 0 },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'J', number: 1 },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'I', number: 2 },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'M', number: 3 },
     ],
     currentPlayer: 0,
     spaces: [
@@ -86,17 +86,76 @@ function getDiceRoll() {
     return { double: dice1 === dice2 ? 1 : 0, amount: dice1 + dice2 };
 }
 
+function buyProperty(property, player) {
+    if (player.money < property.price) {
+        throw new Error("player does not have enough money", property, player);
+    }
+    player.money -= property.price;
+    property.owner = player.number;
+}
+
+function getRentAmount(property) {
+    if (property.houseCost === undefined) {
+        // TODO railroads and utilities
+        return 0;
+    }
+    return property.rent[property.numHouses];
+}
+
+function transferRent(player, owner, rent) {
+    player.money -= rent;
+    owner.money += rent;
+}
+
+function getMonopolies(board, player) {
+    let colors = [];
+    for (let color = 0; color <= 7; color++) {
+        if (board.properties.filter(property => property.color === color).every(property => property.owner === player.number)) {
+            colors.push(color);
+        }
+    }
+    return colors;
+}
+
+function buyHouse(property, player) {
+    if (property.houseCost > player.money) {
+        throw new Error('player does not have enough money for house');
+    }
+    property.numHouses++;
+    player.money -= property.houseCost;
+}
+
+function buyHouses(board, monopolyColor, player) {
+    const properties = board.properties.filter(property => property.color === monopolyColor);
+    for (let tries = 0; tries < 4; tries++) {
+        for (let i = 0; i < properties.length; i++) {
+            if (properties[i].numHouses < 4 && player.money > properties[i].houseCost) {
+                buyHouse(properties[i], player);
+            }
+        }
+    }
+}
+
 function interact(board) {
     const player = getPlayer(board);
     if (isProperty(getSpace(board))) {
         const property = getProperty(board);
+        console.log(player.name, "landed on", property.name);
         if (isOwned(property)) {
-            // TODO transer rent from player to owner
+            transferRent(player, board.players[property.owner], getRentAmount(property));
+            console.log(player.name, "paid", board.players[property.owner].name, getRentAmount(property));
         } else {
-            // TODO buy if have enough money and transer money to bank
+            if (player.money > property.price) {
+                buyProperty(property, player);
+            }
+            console.log(player.name, "bought", property.name);
         }
-        // TODO implement buying houses on monopolies
-        console.log(player.name, "landed on", property);
+        const monopolies = getMonopolies(board, player);
+        if (monopolies.length > 0) {
+            monopolies.forEach((monopolyColor) => {
+                buyHouses(board, monopolyColor, player);
+            });
+        }
     } else {
         // TODO implement all the special squares you can land on
         console.log(player.name, "landed on", getSpace(board));
@@ -136,12 +195,18 @@ function calculateNextPlayer(double, board) {
 
 function playTurn(board) {
     const roll = getDiceRoll();
-    console.log(getPlayer(board).name, "rolled", roll.amount);
+    const player = getPlayer(board);
+    console.log(player.name, "rolled", roll.amount);
     if (roll.double) {
-        console.log(getPlayer(board).name, "got doubles!");
+        console.log(player.name, "got doubles!");
     }
-    getPlayer(board).space += roll.amount;
-    getPlayer(board).doubles += roll.double;
+    player.space += roll.amount;
+    if (player.space >= 40) {
+        console.log(player.name, "passed go and got $200!");
+        player.money += 200;
+        player.space %= 40;
+    }
+    player.doubles += roll.double;
     interact(board);
     calculateNextPlayer(roll.double === 1, board);
 }
@@ -158,6 +223,12 @@ function getDisplayPlayersOnSpace(board, space) {
         }
     }
     return output.padStart(3, ' ');
+}
+
+function printMonopolies(board) {
+    for (let i = 0; i < 4; i++) {
+        console.log(board.players[i].name, getMonopolies(board, { number: i }));
+    }
 }
 
 function renderBoard(board) {
@@ -189,20 +260,17 @@ function renderBoard(board) {
     console.log(`;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;`);
 }
 
-renderBoard(board);
+console.log('########################################################################################################################');
+console.log('########################################################################################################################');
+console.log('########################################################################################################################');
+console.log('######################################              GAME START               ###########################################');
+console.log('########################################################################################################################');
+console.log('########################################################################################################################');
+console.log('########################################################################################################################');
 
-// TODO make a loop so the game plays until someone runs out of money
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
-playTurn(board);
-renderBoard(board);
+// TODO implement killing characters if run out of money and end when one left standing
+while (true) {
+    playTurn(board);
+    renderBoard(board);
+    printMonopolies(board);
+}
