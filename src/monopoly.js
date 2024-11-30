@@ -212,12 +212,15 @@ function playTurn(board) {
 }
 
 function getDisplayMoney(board, playerNumber) {
+    if (!board.players[playerNumber]) {
+        return '0'.padStart(7, ' ');
+    }
     return board.players[playerNumber].money.toString().padStart(7, ' ');
 }
 
 function getDisplayPlayersOnSpace(board, space) {
     let output = '';
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < board.players.length; i++) {
         if (board.players[i].space === space) {
             output += board.players[i].name;
         }
@@ -226,7 +229,7 @@ function getDisplayPlayersOnSpace(board, space) {
 }
 
 function printMonopolies(board) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < board.players.length; i++) {
         console.log(board.players[i].name, getMonopolies(board, { number: i }));
     }
 }
