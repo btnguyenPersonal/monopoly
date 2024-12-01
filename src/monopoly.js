@@ -1,9 +1,9 @@
 let board = {
     players: [
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'B', number: 0 },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'J', number: 1 },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'I', number: 2 },
-        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'M', number: 3 },
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'B', number: 0},
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'J', number: 1},
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'I', number: 2},
+        { money: 1500, doubles: 0, space: 0, turnsInJail: 0, name: 'M', number: 3},
     ],
     currentPlayer: 0,
     spaces: [
@@ -94,6 +94,28 @@ function buyProperty(property, player) {
     property.owner = player.number;
 }
 
+function isBankrupt(board) {
+    if (board.players.filter(player => player.money < 0).length > 0) {
+        return true;
+    }
+    return false;
+}
+
+function bankrupt(board) {
+    const player = getPlayer(board)
+    if (player.money < 0) {
+        board.properties.forEach(property => {
+            if (property.owner === player.number) {
+                property.owner = -1;
+                property.numHouses = 0;
+            }
+        });
+        board.players = board.players.filter(p => p.name !== player.name)
+    }
+}
+
+// Need to consider buying houses logic (buying until negative money) as well as mortgaging/selling houses to get out of bankrupcy before losing.
+
 function getRentAmount(property) {
     if (property.houseCost === undefined) {
         // TODO railroads and utilities
@@ -142,8 +164,8 @@ function interact(board) {
         const property = getProperty(board);
         console.log(player.name, "landed on", property.name);
         if (isOwned(property)) {
-            transferRent(player, board.players[property.owner], getRentAmount(property));
-            console.log(player.name, "paid", board.players[property.owner].name, getRentAmount(property));
+            transferRent(player, board.players.find(player => property.owner === player.number), getRentAmount(property));
+            console.log(player.name, "paid", board.players.find(player => property.owner === player.number).name, getRentAmount(property));
         } else {
             if (player.money > property.price) {
                 buyProperty(property, player);
@@ -183,12 +205,14 @@ function getProperty(board) {
 }
 
 function calculateNextPlayer(double, board) {
-    if (!double) {
+    if (isBankrupt(board)) {
+        bankrupt(board);
+    } else if (!double) {
         getPlayer(board).doubles = 0;
         board.currentPlayer += 1;
-        if (board.currentPlayer === board.players.length) {
-            board.currentPlayer = 0;
-        }
+    }
+    if (board.currentPlayer === board.players.length) {
+        board.currentPlayer = 0;
     }
     // TODO implement speeding 3 times goes to jail
 }
@@ -218,6 +242,20 @@ function getDisplayMoney(board, playerNumber) {
     return board.players[playerNumber].money.toString().padStart(7, ' ');
 }
 
+function getDisplayOwned(board, propertyNumber) {
+    if (isOwned(board.properties[propertyNumber])) {
+        return '\x1b[32m' + board.players.find(player => player.number === board.properties[propertyNumber].owner).name + '\x1b[0m';
+    }
+    return ' ';
+}
+
+function getDisplayName(board, playerNumber) {
+    if (!board.players[playerNumber]) {
+        return 'X';
+    }
+    return board.players[playerNumber].name;
+}
+
 function getDisplayPlayersOnSpace(board, space) {
     let output = '';
     for (let i = 0; i < board.players.length; i++) {
@@ -235,32 +273,32 @@ function printMonopolies(board) {
 }
 
 function renderBoard(board) {
-    console.log(`;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;`);
-    console.log(`;     |   |   |   |   |   |   |   |   |   |     ;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 10)} |${getDisplayPlayersOnSpace(board, 11)}|${getDisplayPlayersOnSpace(board, 12)}|${getDisplayPlayersOnSpace(board, 13)}|${getDisplayPlayersOnSpace(board, 14)}|${getDisplayPlayersOnSpace(board, 15)}|${getDisplayPlayersOnSpace(board, 16)}|${getDisplayPlayersOnSpace(board, 17)}|${getDisplayPlayersOnSpace(board, 18)}|${getDisplayPlayersOnSpace(board, 19)}| ${getDisplayPlayersOnSpace(board, 20)} ;`);
-    console.log(`;_____|___|___|___|___|___|___|___|___|___|_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 9)} |                                   | ${getDisplayPlayersOnSpace(board, 21)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 8)} |                                   | ${getDisplayPlayersOnSpace(board, 22)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 7)} |                                   | ${getDisplayPlayersOnSpace(board, 23)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 6)} |              monopoly             | ${getDisplayPlayersOnSpace(board, 24)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 5)} |            B: $${getDisplayMoney(board, 0)}            | ${getDisplayPlayersOnSpace(board, 25)} ;`);
-    console.log(`;_____|            J: $${getDisplayMoney(board, 1)}            |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 4)} |            I: $${getDisplayMoney(board, 2)}            | ${getDisplayPlayersOnSpace(board, 26)} ;`);
-    console.log(`;_____|            M: $${getDisplayMoney(board, 3)}            |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 3)} |                                   | ${getDisplayPlayersOnSpace(board, 27)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 2)} |                                   | ${getDisplayPlayersOnSpace(board, 28)} ;`);
-    console.log(`;_____|                                   |_____;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 1)} |                                   | ${getDisplayPlayersOnSpace(board, 29)} ;`);
-    console.log(`;_____|___________________________________|_____;`);
-    console.log(`;     |   |   |   |   |   |   |   |   |   |     ;`);
-    console.log(`; ${getDisplayPlayersOnSpace(board, 0)} |${getDisplayPlayersOnSpace(board, 39)}|${getDisplayPlayersOnSpace(board, 38)}|${getDisplayPlayersOnSpace(board, 37)}|${getDisplayPlayersOnSpace(board, 36)}|${getDisplayPlayersOnSpace(board, 35)}|${getDisplayPlayersOnSpace(board, 34)}|${getDisplayPlayersOnSpace(board, 33)}|${getDisplayPlayersOnSpace(board, 32)}|${getDisplayPlayersOnSpace(board, 31)}| ${getDisplayPlayersOnSpace(board, 30)} ;`);
-    console.log(`;_____|___|___|___|___|___|___|___|___|___|_____;`);
-    console.log(`;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;`);
+    console.log(`        ${getDisplayOwned(board, 5)}   ${getDisplayOwned(board, 26)}   ${getDisplayOwned(board, 6)}   ${getDisplayOwned(board, 7)}   ${getDisplayOwned(board, 23)}   ${getDisplayOwned(board, 8)}       ${getDisplayOwned(board, 9)}   ${getDisplayOwned(board, 10)}         `);
+    console.log(`      |   |   |   |   |   |   |   |   |   |      `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 10)} |${getDisplayPlayersOnSpace(board, 11)}|${getDisplayPlayersOnSpace(board, 12)}|${getDisplayPlayersOnSpace(board, 13)}|${getDisplayPlayersOnSpace(board, 14)}|${getDisplayPlayersOnSpace(board, 15)}|${getDisplayPlayersOnSpace(board, 16)}|${getDisplayPlayersOnSpace(board, 17)}|${getDisplayPlayersOnSpace(board, 18)}|${getDisplayPlayersOnSpace(board, 19)}| ${getDisplayPlayersOnSpace(board, 20)}  `);
+    console.log(` _____|\x1b[35m___\x1b[0m|___|\x1b[35m___\x1b[0m|\x1b[35m___\x1b[0m|___|\x1b[38;2;255;165;0m___\x1b[0m|___|\x1b[38;2;255;165;0m___\x1b[0m|\x1b[38;2;255;165;0m___\x1b[0m|_____ `);
+    console.log(`${getDisplayOwned(board, 4)} ${getDisplayPlayersOnSpace(board, 9)} \x1b[0;36m|\x1b[0m                                   \x1b[31m|\x1b[0m ${getDisplayPlayersOnSpace(board, 21)} ${getDisplayOwned(board, 11)}`);
+    console.log(` _____\x1b[0;36m|\x1b[0m                                   \x1b[31m|\x1b[0m_____ `);
+    console.log(`${getDisplayOwned(board, 3)} ${getDisplayPlayersOnSpace(board, 8)} \x1b[0;36m|\x1b[0m                                   | ${getDisplayPlayersOnSpace(board, 22)}  `);
+    console.log(` _____\x1b[0;36m|\x1b[0m                                   |_____ `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 7)} |                                   \x1b[31m|\x1b[0m ${getDisplayPlayersOnSpace(board, 23)} ${getDisplayOwned(board, 12)}`);
+    console.log(` _____|                                   \x1b[31m|\x1b[0m_____ `);
+    console.log(`${getDisplayOwned(board, 2)} ${getDisplayPlayersOnSpace(board, 6)} \x1b[0;36m|\x1b[0m              monopoly             \x1b[31m|\x1b[0m ${getDisplayPlayersOnSpace(board, 24)} ${getDisplayOwned(board, 13)}`);
+    console.log(` _____\x1b[0;36m|\x1b[0m                                   \x1b[31m|\x1b[0m_____ `);
+    console.log(`${getDisplayOwned(board, 22)} ${getDisplayPlayersOnSpace(board, 5)} |            ${getDisplayName(board, 0)}: $${getDisplayMoney(board, 0)}            | ${getDisplayPlayersOnSpace(board, 25)} ${getDisplayOwned(board, 24)}`);
+    console.log(` _____|            ${getDisplayName(board, 1)}: $${getDisplayMoney(board, 1)}            |_____ `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 4)} |            ${getDisplayName(board, 2)}: $${getDisplayMoney(board, 2)}            \x1b[33m|\x1b[0m ${getDisplayPlayersOnSpace(board, 26)} ${getDisplayOwned(board, 14)}`);
+    console.log(` _____|            ${getDisplayName(board, 3)}: $${getDisplayMoney(board, 3)}            \x1b[33m|\x1b[0m_____ `);
+    console.log(`${getDisplayOwned(board, 1)} ${getDisplayPlayersOnSpace(board, 3)} \x1b[38;2;139;69;19m|\x1b[0m                                   \x1b[33m|\x1b[0m ${getDisplayPlayersOnSpace(board, 27)} ${getDisplayOwned(board, 15)}`);
+    console.log(` _____\x1b[38;2;139;69;19m|\x1b[0m                                   \x1b[33m|\x1b[0m_____ `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 2)} |                                   | ${getDisplayPlayersOnSpace(board, 28)} ${getDisplayOwned(board, 27)}`);
+    console.log(` _____|                                   |_____ `);
+    console.log(`${getDisplayOwned(board, 0)} ${getDisplayPlayersOnSpace(board, 1)} \x1b[38;2;139;69;19m|\x1b[0m                                   \x1b[33m|\x1b[0m ${getDisplayPlayersOnSpace(board, 29)} ${getDisplayOwned(board, 16)}`);
+    console.log(` _____\x1b[38;2;139;69;19m|\x1b[0m\x1b[34m___\x1b[0m_____\x1b[34m___\x1b[0m_________\x1b[32m___\x1b[0m_____\x1b[32m___\x1b[0m_\x1b[32m___\x1b[0m\x1b[33m|\x1b[0m_____ `);
+    console.log(`      |   |   |   |   |   |   |   |   |   |      `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 0)} |${getDisplayPlayersOnSpace(board, 39)}|${getDisplayPlayersOnSpace(board, 38)}|${getDisplayPlayersOnSpace(board, 37)}|${getDisplayPlayersOnSpace(board, 36)}|${getDisplayPlayersOnSpace(board, 35)}|${getDisplayPlayersOnSpace(board, 34)}|${getDisplayPlayersOnSpace(board, 33)}|${getDisplayPlayersOnSpace(board, 32)}|${getDisplayPlayersOnSpace(board, 31)}| ${getDisplayPlayersOnSpace(board, 30)}  `);
+    console.log(`      |   |   |   |   |   |   |   |   |   |      `);
+    console.log(`        ${getDisplayOwned(board, 21)}       ${getDisplayOwned(board, 20)}       ${getDisplayOwned(board, 25)}   ${getDisplayOwned(board, 19)}       ${getDisplayOwned(board, 18)}   ${getDisplayOwned(board, 17)}         `);
 }
 
 console.log('########################################################################################################################');
@@ -270,10 +308,11 @@ console.log('######################################              GAME START     
 console.log('########################################################################################################################');
 console.log('########################################################################################################################');
 console.log('########################################################################################################################');
+playTurn(board);
+renderBoard(board);
 
 // TODO implement killing characters if run out of money and end when one left standing
-while (true) {
+process.stdin.on('data', (data) => {
     playTurn(board);
     renderBoard(board);
-    printMonopolies(board);
-}
+});
