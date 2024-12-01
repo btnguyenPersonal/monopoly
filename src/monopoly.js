@@ -118,7 +118,12 @@ function bankrupt(board) {
 
 function getRentAmount(property) {
     if (property.houseCost === undefined) {
-        // TODO railroads and utilities
+        if (property.color === 8) { // Railroad
+            const numRailroadsOwned = board.properties.filter(p => p.color === 8 && p.owner === property.owner).length;
+            const rent = [0, 25, 50, 100, 200];
+            return rent[numRailroadsOwned];
+        }
+        // TODO utilities
         return 0;
     }
     return property.rent[property.numHouses];
@@ -179,6 +184,10 @@ function interact(board) {
             });
         }
     } else {
+        const space = getSpace(board);
+        if (space === "Income Tax" || space === "Luxury Tax") {
+            player.money -= 200;
+        }
         // TODO implement all the special squares you can land on
         console.log(player.name, "landed on", getSpace(board));
     }
@@ -311,8 +320,11 @@ console.log('###################################################################
 playTurn(board);
 renderBoard(board);
 
-// TODO implement killing characters if run out of money and end when one left standing
 process.stdin.on('data', (data) => {
     playTurn(board);
     renderBoard(board);
+    if (board.players.length === 1) {
+        console.log("GAME OVER");
+        process.exit(0);
+    }
 });
