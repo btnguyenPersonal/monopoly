@@ -116,15 +116,17 @@ function bankrupt(board) {
 
 // Need to consider buying houses logic (buying until negative money) as well as mortgaging/selling houses to get out of bankrupcy before losing.
 
-function getRentAmount(property) {
+function getRentAmount(property, rollAmount) {
     if (property.houseCost === undefined) {
         if (property.color === 8) { // Railroad
             const numRailroadsOwned = board.properties.filter(p => p.color === 8 && p.owner === property.owner).length;
             const rent = [0, 25, 50, 100, 200];
             return rent[numRailroadsOwned];
         }
-        // TODO utilities
-        return 0;
+        if (property.color === 9) { // Utilities
+            const numUtilitiesOwned = board.properties.filter(p => p.color === 9 && p.owner === property.owner).length;
+            return (numUtilitiesOwned === 2 ? 10 : 4) * rollAmount;
+        }
     }
     return property.rent[property.numHouses];
 }
@@ -163,14 +165,14 @@ function buyHouses(board, monopolyColor, player) {
     }
 }
 
-function interact(board) {
+function interact(board, rollAmount) {
     const player = getPlayer(board);
     if (isProperty(getSpace(board))) {
         const property = getProperty(board);
         console.log(player.name, "landed on", property.name);
         if (isOwned(property)) {
-            transferRent(player, board.players.find(player => property.owner === player.number), getRentAmount(property));
-            console.log(player.name, "paid", board.players.find(player => property.owner === player.number).name, getRentAmount(property));
+            transferRent(player, board.players.find(player => property.owner === player.number), getRentAmount(property, rollAmount));
+            console.log(player.name, "paid", board.players.find(player => property.owner === player.number).name, getRentAmount(property, rollAmount));
         } else {
             if (player.money > property.price) {
                 buyProperty(property, player);
@@ -184,13 +186,23 @@ function interact(board) {
             });
         }
     } else {
+        console.log(player.name, "landed on", getSpace(board));
         const space = getSpace(board);
         if (space === "Income Tax" || space === "Luxury Tax") {
+            console.log(player.name, "lost 200 dollars");
             player.money -= 200;
         }
-        // TODO implement all the special squares you can land on
-        console.log(player.name, "landed on", getSpace(board));
+        // TODO Chance
+        // TODO Community chest
+        if (space === "Go To Jail") {
+            goToJail(board, player);
+        }
     }
+}
+
+function goToJail(board, player) {
+    player.turnsInJail = 3;
+    player.space = 10; // JAIL
 }
 
 function isOwned(property) {
@@ -214,10 +226,11 @@ function getProperty(board) {
 }
 
 function calculateNextPlayer(double, board) {
+    const player = getPlayer(board);
     if (isBankrupt(board)) {
         bankrupt(board);
     } else if (!double) {
-        getPlayer(board).doubles = 0;
+        player.doubles = 0;
         board.currentPlayer += 1;
     }
     if (board.currentPlayer === board.players.length) {
@@ -233,14 +246,28 @@ function playTurn(board) {
     if (roll.double) {
         console.log(player.name, "got doubles!");
     }
-    player.space += roll.amount;
-    if (player.space >= 40) {
-        console.log(player.name, "passed go and got $200!");
-        player.money += 200;
-        player.space %= 40;
+    if (player.turnsInJail === 0) {
+        if (player.doubles === 2 && roll.double === 1) {
+            console.log(player.name, "was caught speeding");
+            goToJail(board, player);
+        }
+        player.space += roll.amount;
+        if (player.space >= 40) {
+            console.log(player.name, "passed go and got $200!");
+            player.money += 200;
+            player.space %= 40;
+        }
+        player.doubles += roll.double;
+        interact(board, roll.amount);
+    } else {
+        if (roll.double === 1) {
+            console.log(player.name, "got free!");
+            player.turnsInJail = 0;
+        } else {
+            player.turnsInJail--;
+        }
+        console.log(player.name, "has", player.turnsInJail, "turns left in jail");
     }
-    player.doubles += roll.double;
-    interact(board);
     calculateNextPlayer(roll.double === 1, board);
 }
 
@@ -265,11 +292,22 @@ function getDisplayName(board, playerNumber) {
     return board.players[playerNumber].name;
 }
 
-function getDisplayPlayersOnSpace(board, space) {
+function getDisplayPlayersOnSpace(board, space, visiting) {
     let output = '';
     for (let i = 0; i < board.players.length; i++) {
-        if (board.players[i].space === space) {
-            output += board.players[i].name;
+        const player = board.players[i];
+        if (player.space === space) {
+            if (visiting === true) {
+                if (player.turnsInJail === 0) {
+                    output += board.players[i].name;
+                }
+            } else if (visiting === false) {
+                if (player.turnsInJail > 0) {
+                    output += board.players[i].name;
+                }
+            } else {
+                output += board.players[i].name;
+            }
         }
     }
     return output.padStart(3, ' ');
@@ -282,9 +320,9 @@ function printMonopolies(board) {
 }
 
 function renderBoard(board) {
-    console.log(`        ${getDisplayOwned(board, 5)}   ${getDisplayOwned(board, 26)}   ${getDisplayOwned(board, 6)}   ${getDisplayOwned(board, 7)}   ${getDisplayOwned(board, 23)}   ${getDisplayOwned(board, 8)}       ${getDisplayOwned(board, 9)}   ${getDisplayOwned(board, 10)}         `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 10, false)}     ${getDisplayOwned(board, 5)}   ${getDisplayOwned(board, 26)}   ${getDisplayOwned(board, 6)}   ${getDisplayOwned(board, 7)}   ${getDisplayOwned(board, 23)}   ${getDisplayOwned(board, 8)}       ${getDisplayOwned(board, 9)}   ${getDisplayOwned(board, 10)}         `);
     console.log(`      |   |   |   |   |   |   |   |   |   |      `);
-    console.log(`  ${getDisplayPlayersOnSpace(board, 10)} |${getDisplayPlayersOnSpace(board, 11)}|${getDisplayPlayersOnSpace(board, 12)}|${getDisplayPlayersOnSpace(board, 13)}|${getDisplayPlayersOnSpace(board, 14)}|${getDisplayPlayersOnSpace(board, 15)}|${getDisplayPlayersOnSpace(board, 16)}|${getDisplayPlayersOnSpace(board, 17)}|${getDisplayPlayersOnSpace(board, 18)}|${getDisplayPlayersOnSpace(board, 19)}| ${getDisplayPlayersOnSpace(board, 20)}  `);
+    console.log(`  ${getDisplayPlayersOnSpace(board, 10, true)} |${getDisplayPlayersOnSpace(board, 11)}|${getDisplayPlayersOnSpace(board, 12)}|${getDisplayPlayersOnSpace(board, 13)}|${getDisplayPlayersOnSpace(board, 14)}|${getDisplayPlayersOnSpace(board, 15)}|${getDisplayPlayersOnSpace(board, 16)}|${getDisplayPlayersOnSpace(board, 17)}|${getDisplayPlayersOnSpace(board, 18)}|${getDisplayPlayersOnSpace(board, 19)}| ${getDisplayPlayersOnSpace(board, 20)}  `);
     console.log(` _____|\x1b[35m___\x1b[0m|___|\x1b[35m___\x1b[0m|\x1b[35m___\x1b[0m|___|\x1b[38;2;255;165;0m___\x1b[0m|___|\x1b[38;2;255;165;0m___\x1b[0m|\x1b[38;2;255;165;0m___\x1b[0m|_____ `);
     console.log(`${getDisplayOwned(board, 4)} ${getDisplayPlayersOnSpace(board, 9)} \x1b[0;36m|\x1b[0m                                   \x1b[31m|\x1b[0m ${getDisplayPlayersOnSpace(board, 21)} ${getDisplayOwned(board, 11)}`);
     console.log(` _____\x1b[0;36m|\x1b[0m                                   \x1b[31m|\x1b[0m_____ `);
